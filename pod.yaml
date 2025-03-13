@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hesam-rcbevdet
+  labels:
+    k8s-app: hesam-rcbevdet
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      k8s-app: hesam-rcbevdet
+  template:
+    metadata:
+      labels:
+        k8s-app: hesam-rcbevdet
+    spec:
+      containers:
+        - image: hesoyam1377/rcbevdet_cuda116_final:v2  # Replace with your actual Docker Hub image
+          name: rcbevdet
+          command: ["sh", "-c", "sleep infinity"]
+          resources:
+            requests:
+              cpu: "12"
+              memory: 32Gi
+              nvidia.com/gpu: "1"  # Request 1 GPU
+              ephemeral-storage: 80Gi
+            limits:
+              cpu: "24"
+              memory: 201Gi
+              nvidia.com/gpu: "1"  # Limit to 1 GPU
+              ephemeral-storage: 80Gi
+          volumeMounts:
+            - name: dshm  # Mount shared memory
+              mountPath: /dev/shm
+            - name: avl-west-vol 
+              mountPath: /avl-west-vol 
+            - name: cogrob-avl-west-vol
+              mountPath: /cogrob-avl-west-vol
+            - name: hesam-west-vol
+              mountPath: /hesam-west-vol
+      volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 16Gi  # Set shared memory size to 16GB
+        - name: avl-west-vol 
+          persistentVolumeClaim:
+            claimName: avl-west-vol 
+        - name: cogrob-avl-west-vol
+          persistentVolumeClaim:
+            claimName: cogrob-avl-west-vol
+        - name: hesam-west-vol
+          persistentVolumeClaim:
+            claimName: hesam-west-vol
+      tolerations:
+        - key: "nautilus.io/ry-reservation"
+          operator: "Equal"
+          value: "true"
+          effect: "NoSchedule"
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                  - NVIDIA-GeForce-RTX-3090
